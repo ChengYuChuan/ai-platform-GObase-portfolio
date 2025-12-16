@@ -1,0 +1,50 @@
+# LLM Gateway Configuration
+# Environment variables override these settings with prefix LLM_GATEWAY_
+# Example: LLM_GATEWAY_SERVER_PORT=9090
+
+version: "0.1.0"
+
+server:
+  port: 8080
+  read_timeout: 30s
+  write_timeout: 120s  # Longer timeout for streaming responses
+  idle_timeout: 120s
+
+log:
+  level: info  # debug, info, warn, error
+  format: json  # json or pretty
+
+providers:
+  # Default provider when model routing fails
+  default: openai
+  
+  openai:
+    # Set via environment: LLM_GATEWAY_PROVIDERS_OPENAI_API_KEY
+    api_key: ""
+    base_url: "https://api.openai.com/v1"
+    timeout: 60s
+  
+  anthropic:
+    # Set via environment: LLM_GATEWAY_PROVIDERS_ANTHROPIC_API_KEY
+    api_key: ""
+    base_url: "https://api.anthropic.com"
+    timeout: 60s
+    version: "2023-06-01"
+  
+  ollama:
+    base_url: "http://localhost:11434"
+    timeout: 120s
+
+rate_limit:
+  enabled: false
+  requests_per_min: 60
+  burst_size: 10
+  cleanup_interval: 1m
+
+cache:
+  enabled: false
+  ttl: 1h
+  redis:
+    address: "localhost:6379"
+    password: ""
+    db: 0

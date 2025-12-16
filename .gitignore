@@ -1,0 +1,130 @@
+# =============================================================================
+# AI Platform Portfolio - Git Ignore
+# =============================================================================
+
+# =============================================================================
+# Environment & Secrets
+# =============================================================================
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+secrets/
+
+# =============================================================================
+# OS Generated
+# =============================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# =============================================================================
+# IDE & Editors
+# =============================================================================
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+.project
+.classpath
+.settings/
+
+# =============================================================================
+# Go (llm-gateway)
+# =============================================================================
+llm-gateway/build/
+llm-gateway/bin/
+llm-gateway/vendor/
+llm-gateway/*.exe
+llm-gateway/*.dll
+llm-gateway/*.so
+llm-gateway/*.dylib
+llm-gateway/*.test
+llm-gateway/*.out
+llm-gateway/coverage.html
+llm-gateway/tmp/
+
+# =============================================================================
+# Python (rag-agent)
+# =============================================================================
+rag-agent/.venv/
+rag-agent/__pycache__/
+rag-agent/*.py[cod]
+rag-agent/*$py.class
+rag-agent/*.so
+rag-agent/.Python
+rag-agent/build/
+rag-agent/develop-eggs/
+rag-agent/dist/
+rag-agent/downloads/
+rag-agent/eggs/
+rag-agent/.eggs/
+rag-agent/lib/
+rag-agent/lib64/
+rag-agent/parts/
+rag-agent/sdist/
+rag-agent/var/
+rag-agent/wheels/
+rag-agent/*.egg-info/
+rag-agent/.installed.cfg
+rag-agent/*.egg
+rag-agent/.pytest_cache/
+rag-agent/.ruff_cache/
+rag-agent/.mypy_cache/
+rag-agent/coverage.xml
+rag-agent/htmlcov/
+
+# =============================================================================
+# TypeScript/Node (agent-dashboard)
+# =============================================================================
+agent-dashboard/node_modules/
+agent-dashboard/.next/
+agent-dashboard/out/
+agent-dashboard/build/
+agent-dashboard/*.tsbuildinfo
+agent-dashboard/.npm
+agent-dashboard/.eslintcache
+agent-dashboard/coverage/
+agent-dashboard/.turbo/
+
+# =============================================================================
+# Docker
+# =============================================================================
+docker-compose.override.yml
+
+# =============================================================================
+# Logs & Temp Files
+# =============================================================================
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+
+# =============================================================================
+# Benchmark & Test Artifacts
+# =============================================================================
+benchmarks/results/raw/
+*.pprof
+*.prof
+
+# =============================================================================
+# Local Config Overrides
+# =============================================================================
+config.local.yaml
+config.local.yml
+*.local.yaml
+*.local.yml
+
+# =============================================================================
+# Monitoring Data (if running locally)
+# =============================================================================
+monitoring/data/

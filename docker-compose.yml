@@ -1,0 +1,236 @@
+# AI Platform Portfolio - Docker Compose
+# One-command startup for the entire platform
+
+version: '3.8'
+
+services:
+  # ==========================================================================
+  # CORE SERVICES
+  # ==========================================================================
+
+  gateway:
+    build:
+      context: ./llm-gateway
+      dockerfile: Dockerfile
+    container_name: ai-platform-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - LLM_GATEWAY_SERVER_PORT=8080
+      - LLM_GATEWAY_LOG_LEVEL=${LOG_LEVEL:-info}
+      - LLM_GATEWAY_LOG_FORMAT=${LOG_FORMAT:-json}
+      - LLM_GATEWAY_PROVIDERS_OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - LLM_GATEWAY_PROVIDERS_ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - LLM_GATEWAY_PROVIDERS_DEFAULT=${DEFAULT_PROVIDER:-openai}
+      - LLM_GATEWAY_CACHE_ENABLED=true
+      - LLM_GATEWAY_CACHE_REDIS_ADDRESS=redis:6379
+      # Future: RAG service connection
+      - RAG_SERVICE_URL=http://rag-service:8000
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - ai-platform-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    labels:
+      - "service=gateway"
+      - "language=go"
+
+  rag-service:
+    build:
+      context: ./rag-agent
+      dockerfile: Dockerfile
+    container_name: ai-platform-rag
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/ragdb
+      - QDRANT_URL=http://qdrant:6333
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    networks:
+      - ai-platform-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    labels:
+      - "service=rag"
+      - "language=python"
+
+  dashboard:
+    build:
+      context: ./agent-dashboard
+      dockerfile: Dockerfile
+    container_name: ai-platform-dashboard
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_GATEWAY_URL=http://localhost:8080
+      - GATEWAY_URL=http://gateway:8080
+    depends_on:
+      - gateway
+    networks:
+      - ai-platform-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    labels:
+      - "service=dashboard"
+      - "language=typescript"
+
+  # ==========================================================================
+  # DATA STORES
+  # ==========================================================================
+
+  redis:
+    image: redis:7-alpine
+    container_name: ai-platform-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - ai-platform-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: ai-platform-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=ragdb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - ai-platform-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: ai-platform-qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - ai-platform-network
+    restart: unless-stopped
+
+  # ==========================================================================
+  # MONITORING (Optional - use with: docker compose --profile monitoring up)
+  # ==========================================================================
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ai-platform-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - ai-platform-network
+    profiles:
+      - monitoring
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ai-platform-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    networks:
+      - ai-platform-network
+    profiles:
+      - monitoring
+    restart: unless-stopped
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: ai-platform-jaeger
+    ports:
+      - "16686:16686"  # UI
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - ai-platform-network
+    profiles:
+      - monitoring
+    restart: unless-stopped
+
+# ==========================================================================
+# NETWORKS & VOLUMES
+# ==========================================================================
+
+networks:
+  ai-platform-network:
+    driver: bridge
+    name: ai-platform-network
+
+volumes:
+  redis_data:
+    name: ai-platform-redis-data
+  postgres_data:
+    name: ai-platform-postgres-data
+  qdrant_data:
+    name: ai-platform-qdrant-data
+  prometheus_data:
+    name: ai-platform-prometheus-data
+  grafana_data:
+    name: ai-platform-grafana-data
