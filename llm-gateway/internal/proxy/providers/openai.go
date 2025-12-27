@@ -12,7 +12,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/username/llm-gateway/internal/proxy"
+	
 	"github.com/username/llm-gateway/pkg/models"
 )
 
@@ -280,7 +280,7 @@ func (p *OpenAIProvider) handleErrorResponse(resp *http.Response) error {
 	}
 
 	if err := json.Unmarshal(body, &errResp); err == nil && errResp.Error.Message != "" {
-		return &proxy.ProviderError{
+		return &ProviderError{
 			Provider:   "openai",
 			StatusCode: resp.StatusCode,
 			Code:       errResp.Error.Code,
@@ -288,7 +288,7 @@ func (p *OpenAIProvider) handleErrorResponse(resp *http.Response) error {
 		}
 	}
 
-	return &proxy.ProviderError{
+	return &ProviderError{
 		Provider:   "openai",
 		StatusCode: resp.StatusCode,
 		Code:       "api_error",

@@ -11,6 +11,9 @@ import (
 // Provider is an alias to the providers.Provider interface for external access
 type Provider = providers.Provider
 
+// ProviderError is an alias to providers.ProviderError for external access
+type ProviderError = providers.ProviderError
+
 // Router handles routing requests to the appropriate provider
 type Router struct {
 	registry        *providers.Registry
@@ -63,16 +66,4 @@ func (r *Router) AvailableProviders() []string {
 // ListModels returns all available models from all providers
 func (r *Router) ListModels() []models.Model {
 	return r.registry.ListAllModels()
-}
-
-// ProviderError represents an error from a provider
-type ProviderError struct {
-	Provider   string
-	StatusCode int
-	Code       string
-	Message    string
-}
-
-func (e *ProviderError) Error() string {
-	return fmt.Sprintf("%s error (%d): %s - %s", e.Provider, e.StatusCode, e.Code, e.Message)
 }

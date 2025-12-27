@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -68,7 +69,7 @@ func Logger() func(next http.Handler) http.Handler {
 
 			// Build log event
 			event := log.Info()
-			
+
 			// Adjust log level based on status code
 			if wrapped.status >= 500 {
 				event = log.Error()
@@ -94,12 +95,11 @@ func Logger() func(next http.Handler) http.Handler {
 
 // RequestLogger creates a logger for a specific request context
 // Useful for adding request-scoped fields to logs
-func RequestLogger(r *http.Request) *log.Logger {
+func RequestLogger(r *http.Request) zerolog.Logger {
 	requestID := middleware.GetReqID(r.Context())
-	logger := log.With().
+	return log.With().
 		Str("request_id", requestID).
 		Str("method", r.Method).
 		Str("path", r.URL.Path).
 		Logger()
-	return &logger
 }

@@ -128,3 +128,7 @@ config.local.yml
 # Monitoring Data (if running locally)
 # =============================================================================
 monitoring/data/
+
+
+
+.agent/
