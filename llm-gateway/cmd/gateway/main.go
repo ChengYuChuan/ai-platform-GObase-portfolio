@@ -14,6 +14,7 @@ import (
 
 	"github.com/username/llm-gateway/internal/api/rest"
 	"github.com/username/llm-gateway/internal/config"
+	"github.com/username/llm-gateway/internal/performance"
 	"github.com/username/llm-gateway/internal/proxy"
 	"github.com/username/llm-gateway/internal/proxy/providers"
 )
@@ -29,6 +30,20 @@ func main() {
 	// Initialize logger
 	initLogger(cfg)
 	log.Info().Str("version", cfg.Version).Msg("Starting LLM Gateway")
+
+	// Initialize HTTP connection pool for providers
+	poolConfig := performance.PoolConfig{
+		MaxIdleConns:        cfg.Performance.ConnectionPool.MaxIdleConns,
+		MaxIdleConnsPerHost: cfg.Performance.ConnectionPool.MaxIdleConnsPerHost,
+		MaxConnsPerHost:     cfg.Performance.ConnectionPool.MaxConnsPerHost,
+		IdleConnTimeout:     cfg.Performance.ConnectionPool.IdleConnTimeout,
+		TLSHandshakeTimeout: 10 * time.Second,
+		DialTimeout:         10 * time.Second,
+		KeepAlive:           30 * time.Second,
+		ForceAttemptHTTP2:   true,
+	}
+	performance.InitGlobalPool(poolConfig)
+	defer performance.CloseGlobalPool()
 
 	// Initialize providers
 	providerRegistry := initProviders(cfg)

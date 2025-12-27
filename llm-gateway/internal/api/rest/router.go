@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"compress/gzip"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/username/llm-gateway/internal/config"
 	"github.com/username/llm-gateway/internal/middleware"
+	"github.com/username/llm-gateway/internal/performance"
 	"github.com/username/llm-gateway/internal/proxy"
 )
 
@@ -50,6 +52,29 @@ func NewRouter(cfg *config.Config, proxyRouter *proxy.Router) http.Handler {
 
 	// CORS (configure as needed for your frontend)
 	r.Use(corsMiddleware)
+
+	// Response compression (if enabled)
+	if cfg.Performance.Compression.Enabled {
+		compressionLevel := cfg.Performance.Compression.Level
+		if compressionLevel == 0 {
+			compressionLevel = gzip.DefaultCompression
+		}
+		compressionConfig := performance.CompressionConfig{
+			Enabled: true,
+			Level:   compressionLevel,
+			MinSize: cfg.Performance.Compression.MinSize,
+			ContentTypes: []string{
+				"application/json",
+				"text/plain",
+				"text/html",
+			},
+		}
+		r.Use(performance.CompressionMiddleware(compressionConfig))
+		log.Info().
+			Int("level", compressionLevel).
+			Int("min_size", cfg.Performance.Compression.MinSize).
+			Msg("Response compression enabled")
+	}
 
 	// ============================================
 	// Health & Metrics Endpoints (no auth required)

@@ -10,13 +10,14 @@ import (
 
 // Config holds all configuration for the gateway
 type Config struct {
-	Version      string             `mapstructure:"version"`
-	Server       ServerConfig       `mapstructure:"server"`
-	Log          LogConfig          `mapstructure:"log"`
-	Providers    ProvidersConfig    `mapstructure:"providers"`
-	RateLimit    RateLimitConfig    `mapstructure:"rate_limit"`
-	Reliability  ReliabilityConfig  `mapstructure:"reliability"`
-	Cache        CacheConfig        `mapstructure:"cache"`
+	Version     string            `mapstructure:"version"`
+	Server      ServerConfig      `mapstructure:"server"`
+	Log         LogConfig         `mapstructure:"log"`
+	Providers   ProvidersConfig   `mapstructure:"providers"`
+	RateLimit   RateLimitConfig   `mapstructure:"rate_limit"`
+	Reliability ReliabilityConfig `mapstructure:"reliability"`
+	Cache       CacheConfig       `mapstructure:"cache"`
+	Performance PerformanceConfig `mapstructure:"performance"`
 }
 
 // ServerConfig holds HTTP server configuration
@@ -96,9 +97,11 @@ type RetryConfig struct {
 
 // CacheConfig holds caching configuration
 type CacheConfig struct {
-	Enabled bool          `mapstructure:"enabled"`
-	TTL     time.Duration `mapstructure:"ttl"`
-	Redis   RedisConfig   `mapstructure:"redis"`
+	Enabled    bool          `mapstructure:"enabled"`
+	TTL        time.Duration `mapstructure:"ttl"`
+	MaxEntries int           `mapstructure:"max_entries"`
+	Backend    string        `mapstructure:"backend"` // "memory" or "redis"
+	Redis      RedisConfig   `mapstructure:"redis"`
 }
 
 // RedisConfig holds Redis connection configuration
@@ -106,6 +109,37 @@ type RedisConfig struct {
 	Address  string `mapstructure:"address"`
 	Password string `mapstructure:"password"`
 	DB       int    `mapstructure:"db"`
+}
+
+// PerformanceConfig holds performance optimization settings
+type PerformanceConfig struct {
+	ConnectionPool ConnectionPoolConfig `mapstructure:"connection_pool"`
+	Compression    CompressionConfig    `mapstructure:"compression"`
+	Queue          QueueConfig          `mapstructure:"queue"`
+}
+
+// ConnectionPoolConfig holds HTTP connection pool settings
+type ConnectionPoolConfig struct {
+	MaxIdleConns        int           `mapstructure:"max_idle_conns"`
+	MaxIdleConnsPerHost int           `mapstructure:"max_idle_conns_per_host"`
+	MaxConnsPerHost     int           `mapstructure:"max_conns_per_host"`
+	IdleConnTimeout     time.Duration `mapstructure:"idle_conn_timeout"`
+}
+
+// CompressionConfig holds response compression settings
+type CompressionConfig struct {
+	Enabled bool `mapstructure:"enabled"`
+	Level   int  `mapstructure:"level"`
+	MinSize int  `mapstructure:"min_size"`
+}
+
+// QueueConfig holds request queue settings
+type QueueConfig struct {
+	Enabled         bool          `mapstructure:"enabled"`
+	MaxQueueSize    int           `mapstructure:"max_queue_size"`
+	MaxWaitTime     time.Duration `mapstructure:"max_wait_time"`
+	WorkerCount     int           `mapstructure:"worker_count"`
+	PriorityEnabled bool          `mapstructure:"priority_enabled"`
 }
 
 // Load reads configuration from file and environment variables
@@ -197,8 +231,28 @@ func setDefaults(v *viper.Viper) {
 	// Cache defaults
 	v.SetDefault("cache.enabled", false)
 	v.SetDefault("cache.ttl", "1h")
+	v.SetDefault("cache.max_entries", 1000)
+	v.SetDefault("cache.backend", "memory")
 	v.SetDefault("cache.redis.address", "localhost:6379")
 	v.SetDefault("cache.redis.db", 0)
+
+	// Performance defaults - Connection Pool
+	v.SetDefault("performance.connection_pool.max_idle_conns", 100)
+	v.SetDefault("performance.connection_pool.max_idle_conns_per_host", 10)
+	v.SetDefault("performance.connection_pool.max_conns_per_host", 0) // No limit
+	v.SetDefault("performance.connection_pool.idle_conn_timeout", "90s")
+
+	// Performance defaults - Compression
+	v.SetDefault("performance.compression.enabled", true)
+	v.SetDefault("performance.compression.level", -1) // gzip.DefaultCompression
+	v.SetDefault("performance.compression.min_size", 1024)
+
+	// Performance defaults - Queue
+	v.SetDefault("performance.queue.enabled", false)
+	v.SetDefault("performance.queue.max_queue_size", 1000)
+	v.SetDefault("performance.queue.max_wait_time", "30s")
+	v.SetDefault("performance.queue.worker_count", 10)
+	v.SetDefault("performance.queue.priority_enabled", true)
 }
 
 // Validate checks if the configuration is valid
