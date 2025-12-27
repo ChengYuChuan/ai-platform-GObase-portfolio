@@ -10,14 +10,15 @@ import (
 
 // Config holds all configuration for the gateway
 type Config struct {
-	Version     string            `mapstructure:"version"`
-	Server      ServerConfig      `mapstructure:"server"`
-	Log         LogConfig         `mapstructure:"log"`
-	Providers   ProvidersConfig   `mapstructure:"providers"`
-	RateLimit   RateLimitConfig   `mapstructure:"rate_limit"`
-	Reliability ReliabilityConfig `mapstructure:"reliability"`
-	Cache       CacheConfig       `mapstructure:"cache"`
-	Performance PerformanceConfig `mapstructure:"performance"`
+	Version       string              `mapstructure:"version"`
+	Server        ServerConfig        `mapstructure:"server"`
+	Log           LogConfig           `mapstructure:"log"`
+	Providers     ProvidersConfig     `mapstructure:"providers"`
+	RateLimit     RateLimitConfig     `mapstructure:"rate_limit"`
+	Reliability   ReliabilityConfig   `mapstructure:"reliability"`
+	Cache         CacheConfig         `mapstructure:"cache"`
+	Performance   PerformanceConfig   `mapstructure:"performance"`
+	Observability ObservabilityConfig `mapstructure:"observability"`
 }
 
 // ServerConfig holds HTTP server configuration
@@ -142,6 +143,27 @@ type QueueConfig struct {
 	PriorityEnabled bool          `mapstructure:"priority_enabled"`
 }
 
+// ObservabilityConfig holds observability settings
+type ObservabilityConfig struct {
+	Metrics MetricsObsConfig `mapstructure:"metrics"`
+	Tracing TracingConfig    `mapstructure:"tracing"`
+}
+
+// MetricsObsConfig holds metrics configuration
+type MetricsObsConfig struct {
+	Enabled   bool   `mapstructure:"enabled"`
+	Path      string `mapstructure:"path"`
+	Namespace string `mapstructure:"namespace"`
+}
+
+// TracingConfig holds tracing configuration
+type TracingConfig struct {
+	Enabled      bool    `mapstructure:"enabled"`
+	ServiceName  string  `mapstructure:"service_name"`
+	SamplingRate float64 `mapstructure:"sampling_rate"`
+	ExporterType string  `mapstructure:"exporter_type"`
+}
+
 // Load reads configuration from file and environment variables
 func Load() (*Config, error) {
 	v := viper.New()
@@ -253,6 +275,17 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("performance.queue.max_wait_time", "30s")
 	v.SetDefault("performance.queue.worker_count", 10)
 	v.SetDefault("performance.queue.priority_enabled", true)
+
+	// Observability defaults - Metrics
+	v.SetDefault("observability.metrics.enabled", true)
+	v.SetDefault("observability.metrics.path", "/metrics")
+	v.SetDefault("observability.metrics.namespace", "llm_gateway")
+
+	// Observability defaults - Tracing
+	v.SetDefault("observability.tracing.enabled", true)
+	v.SetDefault("observability.tracing.service_name", "llm-gateway")
+	v.SetDefault("observability.tracing.sampling_rate", 1.0)
+	v.SetDefault("observability.tracing.exporter_type", "console")
 }
 
 // Validate checks if the configuration is valid

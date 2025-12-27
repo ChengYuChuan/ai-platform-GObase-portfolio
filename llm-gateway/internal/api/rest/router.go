@@ -10,6 +10,7 @@ import (
 
 	"github.com/username/llm-gateway/internal/config"
 	"github.com/username/llm-gateway/internal/middleware"
+	"github.com/username/llm-gateway/internal/observability"
 	"github.com/username/llm-gateway/internal/performance"
 	"github.com/username/llm-gateway/internal/proxy"
 )
@@ -53,6 +54,40 @@ func NewRouter(cfg *config.Config, proxyRouter *proxy.Router) http.Handler {
 	// CORS (configure as needed for your frontend)
 	r.Use(corsMiddleware)
 
+	// Observability middleware (metrics and tracing)
+	if cfg.Observability.Metrics.Enabled || cfg.Observability.Tracing.Enabled {
+		// Initialize metrics if enabled
+		var metrics *observability.Metrics
+		if cfg.Observability.Metrics.Enabled {
+			metricsConfig := observability.MetricsConfig{
+				Enabled:   true,
+				Path:      cfg.Observability.Metrics.Path,
+				Namespace: cfg.Observability.Metrics.Namespace,
+				Subsystem: "http",
+			}
+			metrics = observability.InitGlobalMetrics(metricsConfig)
+		}
+
+		// Initialize tracer if enabled
+		var tracer *observability.Tracer
+		if cfg.Observability.Tracing.Enabled {
+			tracingConfig := observability.TracingConfig{
+				Enabled:      true,
+				ServiceName:  cfg.Observability.Tracing.ServiceName,
+				SamplingRate: cfg.Observability.Tracing.SamplingRate,
+				ExporterType: cfg.Observability.Tracing.ExporterType,
+			}
+			tracer = observability.InitGlobalTracer(tracingConfig)
+		}
+
+		// Add combined observability middleware
+		r.Use(observability.ObservabilityMiddleware(tracer, metrics))
+		log.Info().
+			Bool("metrics", cfg.Observability.Metrics.Enabled).
+			Bool("tracing", cfg.Observability.Tracing.Enabled).
+			Msg("Observability middleware enabled")
+	}
+
 	// Response compression (if enabled)
 	if cfg.Performance.Compression.Enabled {
 		compressionLevel := cfg.Performance.Compression.Level
@@ -82,7 +117,12 @@ func NewRouter(cfg *config.Config, proxyRouter *proxy.Router) http.Handler {
 	r.Group(func(r chi.Router) {
 		r.Get("/health", healthHandler)
 		r.Get("/ready", readyHandler(proxyRouter))
-		r.Get("/metrics", metricsHandler) // Placeholder for Prometheus
+		// Use real metrics handler if available
+		if cfg.Observability.Metrics.Enabled {
+			r.Get(cfg.Observability.Metrics.Path, observability.GetMetrics().Handler())
+		} else {
+			r.Get("/metrics", metricsHandler)
+		}
 	})
 
 	// ============================================
