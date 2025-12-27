@@ -129,5 +129,15 @@ func initProviders(cfg *config.Config) *providers.Registry {
 		log.Info().Msg("Anthropic provider registered")
 	}
 
+	// Register Ollama provider if configured
+	if cfg.Providers.Ollama.BaseURL != "" {
+		ollama := providers.NewOllamaProvider(providers.OllamaProviderConfig{
+			BaseURL: cfg.Providers.Ollama.BaseURL,
+			Timeout: cfg.Providers.Ollama.Timeout,
+		})
+		registry.Register("ollama", ollama)
+		log.Info().Str("base_url", cfg.Providers.Ollama.BaseURL).Msg("Ollama provider registered")
+	}
+
 	return registry
 }

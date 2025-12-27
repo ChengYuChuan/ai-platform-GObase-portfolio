@@ -2,15 +2,18 @@ package rest
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/rs/zerolog/log"
 
 	"github.com/username/llm-gateway/internal/config"
 	"github.com/username/llm-gateway/internal/middleware"
 	"github.com/username/llm-gateway/internal/proxy"
 )
+
+// rateLimiter holds the global rate limiter instance
+var rateLimiter *middleware.RateLimiter
 
 // NewRouter creates and configures a new Chi router with all routes and middleware
 func NewRouter(cfg *config.Config, proxyRouter *proxy.Router) http.Handler {
@@ -19,21 +22,31 @@ func NewRouter(cfg *config.Config, proxyRouter *proxy.Router) http.Handler {
 	// ============================================
 	// Global Middleware Stack
 	// ============================================
-	
+
 	// Request ID for tracing
 	r.Use(chimiddleware.RequestID)
-	
+
 	// Real IP extraction (for reverse proxy setups)
 	r.Use(chimiddleware.RealIP)
-	
+
 	// Custom structured logging with zerolog
 	r.Use(middleware.Logger())
-	
+
 	// Panic recovery
 	r.Use(chimiddleware.Recoverer)
-	
-	// Request timeout
-	r.Use(chimiddleware.Timeout(60 * time.Second))
+
+	// Request timeout (configurable)
+	r.Use(chimiddleware.Timeout(cfg.Server.WriteTimeout))
+
+	// Rate limiting (if enabled)
+	if cfg.RateLimit.Enabled {
+		rateLimiter = middleware.NewRateLimiter(cfg.RateLimit)
+		r.Use(rateLimiter.RateLimit())
+		log.Info().
+			Int("requests_per_min", cfg.RateLimit.RequestsPerMin).
+			Int("burst_size", cfg.RateLimit.BurstSize).
+			Msg("Rate limiting enabled")
+	}
 
 	// CORS (configure as needed for your frontend)
 	r.Use(corsMiddleware)

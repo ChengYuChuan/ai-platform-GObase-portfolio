@@ -10,12 +10,13 @@ import (
 
 // Config holds all configuration for the gateway
 type Config struct {
-	Version   string        `mapstructure:"version"`
-	Server    ServerConfig  `mapstructure:"server"`
-	Log       LogConfig     `mapstructure:"log"`
-	Providers ProvidersConfig `mapstructure:"providers"`
-	RateLimit RateLimitConfig `mapstructure:"rate_limit"`
-	Cache     CacheConfig   `mapstructure:"cache"`
+	Version      string             `mapstructure:"version"`
+	Server       ServerConfig       `mapstructure:"server"`
+	Log          LogConfig          `mapstructure:"log"`
+	Providers    ProvidersConfig    `mapstructure:"providers"`
+	RateLimit    RateLimitConfig    `mapstructure:"rate_limit"`
+	Reliability  ReliabilityConfig  `mapstructure:"reliability"`
+	Cache        CacheConfig        `mapstructure:"cache"`
 }
 
 // ServerConfig holds HTTP server configuration
@@ -63,10 +64,34 @@ type OllamaConfig struct {
 
 // RateLimitConfig holds rate limiting configuration
 type RateLimitConfig struct {
-	Enabled        bool          `mapstructure:"enabled"`
-	RequestsPerMin int           `mapstructure:"requests_per_min"`
-	BurstSize      int           `mapstructure:"burst_size"`
+	Enabled         bool          `mapstructure:"enabled"`
+	RequestsPerMin  int           `mapstructure:"requests_per_min"`
+	BurstSize       int           `mapstructure:"burst_size"`
 	CleanupInterval time.Duration `mapstructure:"cleanup_interval"`
+}
+
+// ReliabilityConfig holds reliability feature configuration
+type ReliabilityConfig struct {
+	CircuitBreaker CircuitBreakerConfig `mapstructure:"circuit_breaker"`
+	Retry          RetryConfig          `mapstructure:"retry"`
+}
+
+// CircuitBreakerConfig holds circuit breaker settings
+type CircuitBreakerConfig struct {
+	Enabled             bool          `mapstructure:"enabled"`
+	FailureThreshold    int           `mapstructure:"failure_threshold"`
+	SuccessThreshold    int           `mapstructure:"success_threshold"`
+	Timeout             time.Duration `mapstructure:"timeout"`
+	MaxHalfOpenRequests int           `mapstructure:"max_half_open_requests"`
+}
+
+// RetryConfig holds retry settings
+type RetryConfig struct {
+	Enabled           bool          `mapstructure:"enabled"`
+	MaxRetries        int           `mapstructure:"max_retries"`
+	InitialBackoff    time.Duration `mapstructure:"initial_backoff"`
+	MaxBackoff        time.Duration `mapstructure:"max_backoff"`
+	BackoffMultiplier float64       `mapstructure:"backoff_multiplier"`
 }
 
 // CacheConfig holds caching configuration
@@ -154,6 +179,20 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("rate_limit.requests_per_min", 60)
 	v.SetDefault("rate_limit.burst_size", 10)
 	v.SetDefault("rate_limit.cleanup_interval", "1m")
+
+	// Reliability defaults - Circuit Breaker
+	v.SetDefault("reliability.circuit_breaker.enabled", true)
+	v.SetDefault("reliability.circuit_breaker.failure_threshold", 5)
+	v.SetDefault("reliability.circuit_breaker.success_threshold", 3)
+	v.SetDefault("reliability.circuit_breaker.timeout", "30s")
+	v.SetDefault("reliability.circuit_breaker.max_half_open_requests", 1)
+
+	// Reliability defaults - Retry
+	v.SetDefault("reliability.retry.enabled", true)
+	v.SetDefault("reliability.retry.max_retries", 3)
+	v.SetDefault("reliability.retry.initial_backoff", "500ms")
+	v.SetDefault("reliability.retry.max_backoff", "30s")
+	v.SetDefault("reliability.retry.backoff_multiplier", 2.0)
 
 	// Cache defaults
 	v.SetDefault("cache.enabled", false)
