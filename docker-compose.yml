@@ -50,12 +50,12 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/ragdb
-      - QDRANT_URL=http://qdrant:6333
-      - REDIS_URL=redis://redis:6379
-      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - RAG_OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - RAG_ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - RAG_QDRANT_HOST=qdrant
+      - RAG_QDRANT_PORT=6333
+      - RAG_LOG_LEVEL=INFO
+      - RAG_DEBUG=true
     depends_on:
       postgres:
         condition: service_healthy

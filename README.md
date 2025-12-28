@@ -146,7 +146,7 @@ cd agent-dashboard && pnpm dev
 
 ```bash
 # Clone the repository
-git clone https://github.com/username/ai-platform-portfolio.git
+git clone https://github.com/ChengYuChuan/ai-platform-portfolio.git
 cd ai-platform-portfolio
 
 # Set your API keys
