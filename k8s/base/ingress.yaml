@@ -1,0 +1,79 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ai-platform-ingress
+  namespace: ai-platform
+  labels:
+    app.kubernetes.io/name: ai-platform
+  annotations:
+    # NGINX Ingress Controller annotations
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    # Enable CORS for API
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "Authorization, Content-Type"
+    # Rate limiting
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/limit-connections: "50"
+    # Certificate management with cert-manager
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - api.ai-platform.example.com
+        - app.ai-platform.example.com
+      secretName: ai-platform-tls
+  rules:
+    # API Gateway (public API)
+    - host: api.ai-platform.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway
+                port:
+                  number: 8080
+    # Dashboard (web UI)
+    - host: app.ai-platform.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: dashboard
+                port:
+                  number: 3000
+---
+# Internal ingress for RAG service (not exposed externally)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ai-platform-internal-ingress
+  namespace: ai-platform
+  labels:
+    app.kubernetes.io/name: ai-platform
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    # Whitelist internal IPs only
+    nginx.ingress.kubernetes.io/whitelist-source-range: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+spec:
+  ingressClassName: nginx-internal
+  rules:
+    - host: rag.ai-platform.internal
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: rag-service
+                port:
+                  number: 8000

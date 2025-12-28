@@ -1,0 +1,36 @@
+# Kustomization for AI Platform base configuration
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: ai-platform
+
+# Common labels applied to all resources
+commonLabels:
+  app.kubernetes.io/part-of: ai-platform
+  app.kubernetes.io/managed-by: kustomize
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secrets.yaml
+  - service-account.yaml
+  - network-policy.yaml
+  - gateway-deployment.yaml
+  - rag-deployment.yaml
+  - dashboard-deployment.yaml
+  - redis-deployment.yaml
+  - postgres-deployment.yaml
+  - qdrant-deployment.yaml
+  - ingress.yaml
+
+# Images can be overridden in overlays
+images:
+  - name: gateway
+    newName: ai-platform/gateway
+    newTag: latest
+  - name: rag-service
+    newName: ai-platform/rag-service
+    newTag: latest
+  - name: dashboard
+    newName: ai-platform/dashboard
+    newTag: latest

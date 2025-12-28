@@ -338,7 +338,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Contact
 
-**Yu-Chuan** - Recent MS Graduate in Machine Learning & Generative AI
+**Yu-Chuan** - Recent MS Graduate from Heidelberg University specializing in Machine Learning & Generative AI
 
 - Portfolio demonstrates: Go, Python, TypeScript proficiency for AI platform engineering
 - Focus: Production-grade systems with measurable performance advantages

@@ -1,0 +1,46 @@
+🚀 AI Platform has been deployed!
+
+{{- if .Values.ingress.enabled }}
+
+📡 Access your services:
+  - API Gateway: https://{{ .Values.ingress.hosts.api.host }}
+  - Dashboard:   https://{{ .Values.ingress.hosts.dashboard.host }}
+
+{{- else }}
+
+📡 To access your services, run:
+
+  # Gateway API
+  kubectl port-forward svc/{{ include "ai-platform.fullname" . }}-gateway {{ .Values.gateway.service.port }}:{{ .Values.gateway.service.port }} -n {{ .Values.namespace }}
+
+  # Dashboard
+  kubectl port-forward svc/{{ include "ai-platform.fullname" . }}-dashboard {{ .Values.dashboard.service.port }}:{{ .Values.dashboard.service.port }} -n {{ .Values.namespace }}
+
+{{- end }}
+
+🔧 Quick Commands:
+
+  # Check pod status
+  kubectl get pods -n {{ .Values.namespace }}
+
+  # View Gateway logs
+  kubectl logs -f deployment/{{ include "ai-platform.fullname" . }}-gateway -n {{ .Values.namespace }}
+
+  # View RAG Service logs
+  kubectl logs -f deployment/{{ include "ai-platform.fullname" . }}-rag-service -n {{ .Values.namespace }}
+
+  # Test health endpoints
+  curl http://localhost:{{ .Values.gateway.service.port }}/health
+
+⚠️  Important Security Notes:
+
+  1. Ensure you have configured API keys in secrets:
+     - OpenAI API Key
+     - Anthropic API Key (optional)
+
+  2. For production:
+     - Use external secret management (HashiCorp Vault, AWS Secrets Manager)
+     - Enable TLS with proper certificates
+     - Review and customize NetworkPolicies
+
+📚 Documentation: https://github.com/yourusername/ai-platform

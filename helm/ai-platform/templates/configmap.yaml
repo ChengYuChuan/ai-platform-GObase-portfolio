@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ai-platform.fullname" . }}-config
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "ai-platform.labels" . | nindent 4 }}
+data:
+  # Gateway configuration
+  LLM_GATEWAY_SERVER_PORT: "{{ .Values.gateway.service.port }}"
+  LLM_GATEWAY_LOG_LEVEL: {{ .Values.gateway.config.logLevel | quote }}
+  LLM_GATEWAY_LOG_FORMAT: {{ .Values.gateway.config.logFormat | quote }}
+  {{- if .Values.gateway.config.rateLimit.enabled }}
+  LLM_GATEWAY_RATELIMIT_ENABLED: "true"
+  LLM_GATEWAY_RATELIMIT_RPS: "{{ .Values.gateway.config.rateLimit.requestsPerSecond }}"
+  LLM_GATEWAY_RATELIMIT_BURST: "{{ .Values.gateway.config.rateLimit.burst }}"
+  {{- end }}
+  {{- if .Values.gateway.config.cache.enabled }}
+  LLM_GATEWAY_CACHE_ENABLED: "true"
+  LLM_GATEWAY_CACHE_TTL: "{{ .Values.gateway.config.cache.ttlSeconds }}s"
+  {{- end }}
+
+  # Redis configuration
+  {{- if .Values.redis.enabled }}
+  LLM_GATEWAY_CACHE_REDIS_ADDR: "{{ .Release.Name }}-redis-master:6379"
+  {{- end }}
+
+  # RAG Service configuration
+  RAG_LOG_LEVEL: {{ .Values.gateway.config.logLevel | quote }}
+  RAG_CHUNK_SIZE: "{{ .Values.ragService.config.chunkSize }}"
+  RAG_CHUNK_OVERLAP: "{{ .Values.ragService.config.chunkOverlap }}"
+  RAG_EMBEDDING_MODEL: {{ .Values.ragService.config.embeddingModel | quote }}
+  RAG_TOP_K: "{{ .Values.ragService.config.topK }}"
+
+  # Qdrant configuration
+  {{- if .Values.qdrant.enabled }}
+  RAG_QDRANT_HOST: "{{ include "ai-platform.fullname" . }}-qdrant"
+  RAG_QDRANT_PORT: "{{ .Values.qdrant.service.httpPort }}"
+  {{- end }}
+
+  # PostgreSQL configuration
+  {{- if .Values.postgresql.enabled }}
+  RAG_POSTGRES_HOST: "{{ .Release.Name }}-postgresql"
+  RAG_POSTGRES_PORT: "5432"
+  RAG_POSTGRES_DB: {{ .Values.postgresql.auth.database | quote }}
+  {{- end }}
+
+  # Dashboard configuration
+  NEXT_PUBLIC_API_URL: "http://{{ include "ai-platform.fullname" . }}-gateway:{{ .Values.gateway.service.port }}"

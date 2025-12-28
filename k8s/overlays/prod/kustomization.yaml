@@ -1,0 +1,75 @@
+# Production overlay
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: ai-platform
+
+resources:
+  - ../../base
+
+# Production-specific patches
+patches:
+  # Increase replicas for production
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 3
+    target:
+      kind: Deployment
+      name: gateway
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2
+    target:
+      kind: Deployment
+      name: rag-service
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2
+    target:
+      kind: Deployment
+      name: dashboard
+
+  # Increase resource limits for production
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: 1Gi
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "1"
+    target:
+      kind: Deployment
+      name: gateway
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: 4Gi
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "2"
+    target:
+      kind: Deployment
+      name: rag-service
+
+# Production ConfigMap overrides
+configMapGenerator:
+  - name: ai-platform-config
+    behavior: merge
+    literals:
+      - LOG_LEVEL=INFO
+      - LOG_FORMAT=json
+
+# Use production images with specific tags
+images:
+  - name: gateway
+    newName: ai-platform/gateway
+    newTag: v1.0.0
+  - name: rag-service
+    newName: ai-platform/rag-service
+    newTag: v1.0.0
+  - name: dashboard
+    newName: ai-platform/dashboard
+    newTag: v1.0.0

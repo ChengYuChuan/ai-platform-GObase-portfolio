@@ -1,0 +1,156 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: ai-platform
+  labels:
+    app.kubernetes.io/name: ai-platform
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-gateway-ingress
+  namespace: ai-platform
+  labels:
+    app.kubernetes.io/name: ai-platform
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: gateway
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+    # Allow from dashboard
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: dashboard
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dashboard-ingress
+  namespace: ai-platform
+  labels:
+    app.kubernetes.io/name: ai-platform
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: dashboard
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-rag-service-ingress
+  namespace: ai-platform
+  labels:
+    app.kubernetes.io/name: ai-platform
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: rag-service
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow from gateway only
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gateway
+      ports:
+        - protocol: TCP
+          port: 8000
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-redis-ingress
+  namespace: ai-platform
+  labels:
+    app.kubernetes.io/name: ai-platform
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: redis
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow from gateway and rag-service
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: gateway
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: rag-service
+      ports:
+        - protocol: TCP
+          port: 6379
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-postgres-ingress
+  namespace: ai-platform
+  labels:
+    app.kubernetes.io/name: ai-platform
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow from rag-service only
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: rag-service
+      ports:
+        - protocol: TCP
+          port: 5432
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-qdrant-ingress
+  namespace: ai-platform
+  labels:
+    app.kubernetes.io/name: ai-platform
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: qdrant
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow from rag-service only
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: rag-service
+      ports:
+        - protocol: TCP
+          port: 6333
+        - protocol: TCP
+          port: 6334

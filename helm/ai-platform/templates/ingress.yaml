@@ -1,0 +1,51 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "ai-platform.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "ai-platform.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.hosts.api.host }}
+        - {{ .Values.ingress.hosts.dashboard.host }}
+      secretName: {{ .Values.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    # API Gateway
+    - host: {{ .Values.ingress.hosts.api.host }}
+      http:
+        paths:
+          {{- range .Values.ingress.hosts.api.paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ include "ai-platform.fullname" $ }}-gateway
+                port:
+                  number: {{ $.Values.gateway.service.port }}
+          {{- end }}
+    # Dashboard
+    - host: {{ .Values.ingress.hosts.dashboard.host }}
+      http:
+        paths:
+          {{- range .Values.ingress.hosts.dashboard.paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ include "ai-platform.fullname" $ }}-dashboard
+                port:
+                  number: {{ $.Values.dashboard.service.port }}
+          {{- end }}
+{{- end }}

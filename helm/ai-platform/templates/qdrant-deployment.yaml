@@ -1,0 +1,104 @@
+{{- if .Values.qdrant.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ai-platform.fullname" . }}-qdrant
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "ai-platform.qdrant.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.qdrant.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "ai-platform.qdrant.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ai-platform.qdrant.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "ai-platform.serviceAccountName" . }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: qdrant
+          image: "{{ .Values.qdrant.image.repository }}:{{ .Values.qdrant.image.tag }}"
+          imagePullPolicy: {{ .Values.qdrant.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.qdrant.service.httpPort }}
+              protocol: TCP
+            - name: grpc
+              containerPort: {{ .Values.qdrant.service.grpcPort }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 10
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.qdrant.resources | nindent 12 }}
+          volumeMounts:
+            - name: qdrant-storage
+              mountPath: /qdrant/storage
+      volumes:
+        - name: qdrant-storage
+          {{- if .Values.qdrant.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "ai-platform.fullname" . }}-qdrant
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ai-platform.fullname" . }}-qdrant
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "ai-platform.qdrant.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.qdrant.service.type }}
+  ports:
+    - port: {{ .Values.qdrant.service.httpPort }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    - port: {{ .Values.qdrant.service.grpcPort }}
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
+  selector:
+    {{- include "ai-platform.qdrant.selectorLabels" . | nindent 4 }}
+{{- if .Values.qdrant.persistence.enabled }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "ai-platform.fullname" . }}-qdrant
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "ai-platform.qdrant.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- if .Values.qdrant.persistence.storageClass }}
+  storageClassName: {{ .Values.qdrant.persistence.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.qdrant.persistence.size }}
+{{- end }}
+{{- end }}

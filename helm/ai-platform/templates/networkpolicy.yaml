@@ -1,0 +1,111 @@
+{{- if .Values.networkPolicy.enabled }}
+# Default deny all ingress traffic
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "ai-platform.fullname" . }}-default-deny
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "ai-platform.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# Allow ingress to Gateway from ingress controller
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "ai-platform.fullname" . }}-gateway-ingress
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "ai-platform.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "ai-platform.gateway.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "ai-platform.dashboard.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.gateway.service.port }}
+---
+# Allow ingress to Dashboard from ingress controller
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "ai-platform.fullname" . }}-dashboard-ingress
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "ai-platform.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "ai-platform.dashboard.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+---
+# Allow ingress to RAG Service from Gateway only
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "ai-platform.fullname" . }}-rag-ingress
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "ai-platform.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "ai-platform.ragService.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "ai-platform.gateway.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.ragService.service.port }}
+---
+# Allow ingress to Qdrant from RAG Service only
+{{- if .Values.qdrant.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "ai-platform.fullname" . }}-qdrant-ingress
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "ai-platform.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "ai-platform.qdrant.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "ai-platform.ragService.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.qdrant.service.httpPort }}
+        - protocol: TCP
+          port: {{ .Values.qdrant.service.grpcPort }}
+{{- end }}
+{{- end }}
