@@ -253,6 +253,97 @@ class ContextualRetriever(BaseRetriever):
             self.conversation_context = self.conversation_context[-10:]
 
 
+class AdvancedRetriever(BaseRetriever):
+    """Advanced retriever with reranking and context compression.
+
+    Combines semantic search with cross-encoder reranking and
+    optional context compression for improved relevance.
+    """
+
+    top_k: int = Field(default=5, description="Final number of documents to return")
+    initial_k: int = Field(default=20, description="Initial retrieval count for reranking")
+    use_reranker: bool = Field(default=True, description="Whether to use reranking")
+    use_compressor: bool = Field(default=False, description="Whether to compress context")
+    reranker_type: str = Field(default="cross-encoder", description="Type of reranker")
+    compressor_type: str = Field(default="extractive", description="Type of compressor")
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    def _get_relevant_documents(
+        self,
+        query: str,
+        *,
+        run_manager: CallbackManagerForRetrieverRun | None = None,
+    ) -> list[Document]:
+        """Synchronous retrieval."""
+        import asyncio
+
+        loop = asyncio.get_event_loop()
+        return loop.run_until_complete(
+            self._aget_relevant_documents(query, run_manager=run_manager)
+        )
+
+    async def _aget_relevant_documents(
+        self,
+        query: str,
+        *,
+        run_manager: CallbackManagerForRetrieverRun | None = None,
+    ) -> list[Document]:
+        """Retrieve documents with reranking and compression.
+
+        Args:
+            query: Search query.
+            run_manager: Optional callback manager.
+
+        Returns:
+            List of relevant, reranked, and optionally compressed documents.
+        """
+        from src.rag.retrieval.reranker import get_reranker
+        from src.rag.retrieval.compressor import get_compressor
+
+        vector_store = get_vector_store()
+
+        # Step 1: Initial retrieval (get more docs for reranking)
+        retrieval_k = self.initial_k if self.use_reranker else self.top_k
+
+        results = await vector_store.search(
+            query=query,
+            top_k=retrieval_k,
+        )
+
+        documents = [
+            Document(
+                page_content=result["content"],
+                metadata={
+                    **result["metadata"],
+                    "relevance_score": result["score"],
+                },
+            )
+            for result in results
+        ]
+
+        logger.debug(
+            "Initial retrieval complete",
+            query_preview=query[:50],
+            num_documents=len(documents),
+        )
+
+        # Step 2: Reranking
+        if self.use_reranker and documents:
+            reranker = get_reranker(self.reranker_type, top_k=self.top_k)
+            documents = await reranker.arerank(query, documents, top_k=self.top_k)
+            logger.debug("Reranking complete", num_documents=len(documents))
+
+        # Step 3: Context compression
+        if self.use_compressor and documents:
+            compressor = get_compressor(self.compressor_type)
+            documents = await compressor.compress(query, documents)
+            logger.debug("Compression complete", num_documents=len(documents))
+
+        return documents
+
+
 def get_retriever(
     retriever_type: str = "semantic",
     **kwargs: Any,
@@ -260,7 +351,11 @@ def get_retriever(
     """Factory function to get a retriever.
 
     Args:
-        retriever_type: Type of retriever ("semantic", "hybrid", "contextual").
+        retriever_type: Type of retriever.
+            - "semantic": Basic semantic search
+            - "hybrid": Combined semantic + keyword search
+            - "contextual": Semantic search with conversation context
+            - "advanced": Semantic search with reranking and compression
         **kwargs: Additional arguments for the retriever.
 
     Returns:
@@ -279,5 +374,11 @@ def get_retriever(
     elif retriever_type == "contextual":
         base = QdrantRetriever(**default_kwargs)
         return ContextualRetriever(base_retriever=base)
+    elif retriever_type == "advanced":
+        return AdvancedRetriever(
+            top_k=default_kwargs.get("top_k", 5),
+            use_reranker=settings.rerank_enabled,
+            use_compressor=kwargs.get("use_compressor", False),
+        )
     else:
         return QdrantRetriever(**default_kwargs)

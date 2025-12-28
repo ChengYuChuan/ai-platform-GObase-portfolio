@@ -55,11 +55,18 @@ llm-gateway/tmp/
 # =============================================================================
 # Python (rag-agent)
 # =============================================================================
+# Virtual environment
 rag-agent/.venv/
-rag-agent/__pycache__/
-rag-agent/*.py[cod]
-rag-agent/*$py.class
-rag-agent/*.so
+venv/
+.venv/
+
+# Python cache (all nested directories)
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Build artifacts
 rag-agent/.Python
 rag-agent/build/
 rag-agent/develop-eggs/
@@ -76,11 +83,21 @@ rag-agent/wheels/
 rag-agent/*.egg-info/
 rag-agent/.installed.cfg
 rag-agent/*.egg
+
+# uv lock file (optional - remove if you want to commit it)
+rag-agent/uv.lock
+
+# Testing & Linting
 rag-agent/.pytest_cache/
 rag-agent/.ruff_cache/
 rag-agent/.mypy_cache/
-rag-agent/coverage.xml
-rag-agent/htmlcov/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+coverage.xml
+htmlcov/
+.coverage
+*.cover
 
 # =============================================================================
 # TypeScript/Node (agent-dashboard)
