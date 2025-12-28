@@ -1,0 +1,14 @@
+# Grafana Dashboard Provisioning Configuration
+apiVersion: 1
+
+providers:
+  - name: 'AI Platform Dashboards'
+    orgId: 1
+    folder: 'AI Platform'
+    folderUid: 'ai-platform'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
