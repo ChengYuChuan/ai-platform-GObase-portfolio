@@ -7,9 +7,10 @@
 [![Go](https://img.shields.io/badge/Go-1.22-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat&logo=python)](https://python.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=flat&logo=typescript)](https://typescriptlang.org/)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-Ready-326CE5?style=flat&logo=kubernetes)](https://kubernetes.io/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-[Architecture](#architecture) • [Quick Start](#quick-start) • [Projects](#projects) • [Benchmarks](#performance-benchmarks) • [Documentation](./docs/)
+[Architecture](#architecture) • [Quick Start](#quick-start) • [Projects](#projects) • [Kubernetes](#kubernetes-deployment) • [Benchmarks](#performance-benchmarks) • [Security](./SECURITY.md)
 
 </div>
 
@@ -281,9 +282,81 @@ make test-all
 |-----------|------------|---------|
 | Vector DB | Qdrant | Semantic search |
 | Cache | Redis | Response caching |
+| Database | PostgreSQL | Metadata storage |
 | Metrics | Prometheus + Grafana | Observability |
 | Tracing | OpenTelemetry + Jaeger | Distributed tracing |
-| Container | Docker Compose | Orchestration |
+| Container | Docker Compose | Local orchestration |
+| Orchestration | Kubernetes | Production deployment |
+| Package Manager | Helm + Kustomize | K8s configuration |
+
+---
+
+## Kubernetes Deployment
+
+This project includes production-ready Kubernetes manifests and Helm charts.
+
+### Deploy with Kustomize
+
+```bash
+# Development environment (1 replica, DEBUG logs)
+kubectl apply -k k8s/overlays/dev
+
+# Production environment (3 replicas, optimized resources)
+kubectl apply -k k8s/overlays/prod
+```
+
+### Deploy with Helm
+
+```bash
+# Add secrets first
+kubectl create secret generic llm-api-keys \
+  --from-literal=openai-api-key=$OPENAI_API_KEY \
+  --from-literal=anthropic-api-key=$ANTHROPIC_API_KEY \
+  -n ai-platform
+
+# Install the chart
+helm install ai-platform helm/ai-platform \
+  -n ai-platform --create-namespace \
+  -f helm/ai-platform/values.yaml
+
+# Upgrade with custom values
+helm upgrade ai-platform helm/ai-platform \
+  --set gateway.replicaCount=3 \
+  --set ragService.replicaCount=2
+```
+
+### Kubernetes Features
+
+| Feature | Description |
+|---------|-------------|
+| **Network Policies** | Zero-trust pod-to-pod communication |
+| **RBAC** | Least-privilege service accounts |
+| **Ingress** | TLS termination, rate limiting, CORS |
+| **Resource Limits** | CPU/memory constraints per service |
+| **Health Probes** | Liveness & readiness checks |
+| **Autoscaling** | HPA support (configurable) |
+
+---
+
+## Interactive Demo
+
+Run the interactive demo script to test all platform features:
+
+```bash
+# Make executable
+chmod +x scripts/demo.sh
+
+# Run demo
+./scripts/demo.sh
+```
+
+The demo includes:
+- Health checks for all services
+- Chat completion (streaming & non-streaming)
+- Semantic caching demonstration
+- Rate limiting test
+- Document upload to RAG
+- Metrics endpoints
 
 ---
 
@@ -293,6 +366,7 @@ make test-all
 - [API Specification](./docs/api-specification.md)
 - [Benchmark Report](./docs/benchmark-report.md)
 - [Deployment Guide](./docs/deployment.md)
+- [Security Policy](./SECURITY.md) ← API key rotation, incident response
 
 ---
 
@@ -322,9 +396,20 @@ ai-platform-portfolio/
 │   │   └── lib/           # Utilities
 │   └── public/
 │
+├── k8s/                   # Kubernetes manifests
+│   ├── base/              # Base configurations (13 files)
+│   └── overlays/          # Environment-specific (dev/prod)
+│
+├── helm/                  # Helm charts
+│   └── ai-platform/       # Main chart with templates
+│
+├── scripts/               # Utility scripts
+│   └── demo.sh            # Interactive demo
+│
 ├── docs/                  # Documentation
-├── .github/workflows/     # CI/CD
+├── .github/workflows/     # CI/CD (Go, Python, TypeScript)
 ├── docker-compose.yml     # Full stack orchestration
+├── SECURITY.md            # Security policy & key rotation
 └── Makefile               # Unified commands
 ```
 
